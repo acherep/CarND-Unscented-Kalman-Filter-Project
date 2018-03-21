@@ -1,20 +1,22 @@
 #ifndef UKF_H
 #define UKF_H
 
-#include "measurement_package.h"
-#include "Eigen/Dense"
-#include <vector>
-#include <string>
 #include <fstream>
+#include <string>
+#include <vector>
+#include "Eigen/Dense"
+#include "measurement_package.h"
 
 using Eigen::MatrixXd;
 using Eigen::VectorXd;
 
 class UKF {
-public:
-
+ public:
   ///* initially set to false, set to true in first call of ProcessMeasurement
   bool is_initialized_;
+
+  // previous timestamp
+  long long previous_timestamp_;
 
   ///* if this is false, laser measurements will be ignored (except for init)
   bool use_laser_;
@@ -31,8 +33,8 @@ public:
   ///* predicted sigma points matrix
   MatrixXd Xsig_pred_;
 
-  ///* time when the state is true, in us
-  long long time_us_;
+  //  ///* time when the state is true, in us
+  //  long long time_us_;
 
   ///* Process noise standard deviation longitudinal acceleration in m/s^2
   double std_a_;
@@ -53,7 +55,7 @@ public:
   double std_radphi_;
 
   ///* Radar measurement noise standard deviation radius change in m/s
-  double std_radrd_ ;
+  double std_radrd_;
 
   ///* Weights of sigma points
   VectorXd weights_;
@@ -67,6 +69,13 @@ public:
   ///* Sigma point spreading parameter
   double lambda_;
 
+  int n_z_radar_;
+
+  // measurement laser matrix
+  MatrixXd H_laser_;
+
+  // measurement noise covariance matrix - laser
+  MatrixXd R_laser_;
 
   /**
    * Constructor
@@ -89,19 +98,30 @@ public:
    * matrix
    * @param delta_t Time between k and k+1 in s
    */
-  void Prediction(double delta_t);
+  void Prediction(double dt);
+
+  void GenerateAugmentedSigmaPoints(MatrixXd* Xsig_out);
+
+  void SigmaPointPrediction(const MatrixXd& Xsig_aug, double dt);
+
+  void PredictMeanAndCovariance();
 
   /**
    * Updates the state and the state covariance matrix using a laser measurement
    * @param meas_package The measurement at k+1
    */
-  void UpdateLidar(MeasurementPackage meas_package);
+  void UpdateLidar(VectorXd raw_measurements);
 
   /**
    * Updates the state and the state covariance matrix using a radar measurement
    * @param meas_package The measurement at k+1
    */
-  void UpdateRadar(MeasurementPackage meas_package);
+  void UpdateRadar(VectorXd raw_measurements);
+
+  void PredictRadarMeasurement(VectorXd* z_out, MatrixXd* S_out,
+                               MatrixXd* Zsig_out);
+  void UpdateState(const VectorXd& z_pred, const MatrixXd& S,
+                   const MatrixXd& Zsig, const VectorXd& z);
 };
 
 #endif /* UKF_H */
